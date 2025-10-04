@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rankify</title>
+  <!-- Icons & Fonts -->
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <!-- Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root{
+      --bg1:#0f172a; /* slate-900 */
+      --bg2:#111827aa; /* overlay */
+      --card:#0b1222aa; /* glass */
+      --text:#e5e7eb; /* slate-200 */
+      --muted:#9ca3af; /* gray-400 */
+      --brand1:#7c3aed; /* violet-600 */
+      --brand2:#2563eb; /* blue-600 */
+      --accent:#22d3ee; /* cyan-400 */
+      --ok:#10b981; /* emerald */
+      --warn:#f59e0b; /* amber */
+      --bad:#ef4444; /* red */
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family:Poppins,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; color:var(--text);
+      background: radial-gradient(1200px 600px at 10% 0%, #1e293b, transparent),
+                  radial-gradient(1200px 800px at 100% 0%, #0b1324, transparent),
+                  linear-gradient(135deg, #0b1020, #0a0f1c);
+    }
+    header{
+      position:sticky; top:0; z-index:20; backdrop-filter: blur(12px);
+      background:linear-gradient( to right, #0b1020cc, #0a0f1ccc ); border-bottom:1px solid #ffffff14;
+    }
+    .container{max-width:1200px; margin:0 auto; padding:16px;}
+    .topbar{display:flex; align-items:center; gap:14px;}
+    .logo{
+      display:flex; align-items:center; gap:10px; font-weight:700; letter-spacing:.3px; font-size:20px;
+    }
+    .logo i{color:var(--accent); font-size:24px}
+    nav{margin-left:auto; display:flex; gap:8px; flex-wrap:wrap}
+    .tab{
+      display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius:999px; cursor:pointer;
+      background: #ffffff10; color:var(--text); border:1px solid #ffffff12; transition:.25s;
+    }
+    .tab:hover{transform:translateY(-1px); box-shadow:0 6px 18px #00000055}
+    .tab.active{background: linear-gradient(90deg, var(--brand1), var(--brand2)); border-color:#0000}
+
+    /* Sections */
+    section{display:none; padding:24px 0}
+    section.active{display:block}
+
+    .grid{display:grid; gap:16px}
+    .g-2{grid-template-columns:repeat(2, minmax(0,1fr))}
+    .g-3{grid-template-columns:repeat(3, minmax(0,1fr))}
+    @media (max-width: 900px){.g-2,.g-3{grid-template-columns:1fr}}
+
+    .card{
+      background:linear-gradient( to bottom right, #0f172acc, #0b1222aa);
+      border:1px solid #ffffff12; border-radius:18px; padding:18px; box-shadow:0 20px 60px #00000066;
+    }
+    .card h3{margin:0 0 8px 0; font-size:18px}
+    .sub{color:var(--muted); font-size:13px}
+
+    /* Upload */
+    .dropzone{
+      border:2px dashed #7c3aed55; border-radius:18px; padding:28px; text-align:center; transition:.3s; cursor:pointer;
+      background: linear-gradient(145deg, #0b122277, #0f172a77);
+    }
+    .dropzone:hover{border-color:#7c3aed; box-shadow:0 10px 32px #00000066}
+    .dz-icon{font-size:42px; color:var(--accent)}
+    .dz-title{font-weight:600;}
+    .dz-cta{color:#fef08a; text-decoration:underline; cursor:pointer}
+    .progress{height:8px; background:#ffffff14; border-radius:999px; overflow:hidden; margin-top:10px}
+    .bar{height:100%; width:0; background:linear-gradient(90deg, var(--brand2), var(--accent)); transition:width .25s}
+
+    /* Toolbar */
+    .toolbar{display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:10px}
+    .btn{
+      background:linear-gradient(90deg, var(--brand1), var(--brand2)); color:white; border:0; padding:10px 14px; border-radius:10px;
+      cursor:pointer; display:inline-flex; align-items:center; gap:8px; box-shadow:0 12px 30px #0000006a; transition:.2s;;
+    }
+    .btn.secondary{background:#ffffff12; border:1px solid #ffffff1f}
+    .btn:hover{transform:translateY(-1px)}
+    .input{padding:10px 12px; border-radius:10px; background:#ffffff10; border:1px solid #ffffff1f; color:var(--text)}
+
+    /* Tables */
+    .table-wrap{overflow:auto; border-radius:12px; border:1px solid #ffffff12}
+    table{width:100%; border-collapse:collapse; font-size:14px; background:#0a1020cc}
+    th,td{padding:10px; border-bottom:1px solid #ffffff12; text-align:center}
+    thead th{position:sticky; top:0; background:#0c1428ee; backdrop-filter: blur(6px); cursor:pointer}
+    tbody tr:hover{background:#ffffff08}
+    .rank{font-weight:700; color:#fef08a}
+
+    /* Pills */
+    .pill{padding:4px 10px; border-radius:999px; font-size:12px; font-weight:600; display:inline-block}
+    .pill.yes{background:#16a34a22; color:#86efac; border:1px solid #16a34a44}
+    .pill.no{background:#dc262622; color:#fca5a5; border:1px solid #dc262644}
+    .pill.mh{background:#2563eb22; color:#93c5fd; border:1px solid #2563eb44}
+    .pill.oms{background:#7c3aed22; color:#d8b4fe; border:1px solid #7c3aed44}
+
+    /* Modal */
+    .modal{position:fixed; inset:0; display:none; place-items:center; background:#00000088; z-index:50}
+    .modal.active{display:grid}
+    .modal .content{width:min(700px, 92vw);  }
+
+    /* Footer */
+    footer{padding:40px 0; text-align:center; color:var(--muted);  
+     background:linear-gradient( to right, #0b1020cc, #0a0f1ccc ); border-bottom:1px solid #ffffff14;}
+
+    /* Light mode toggle */
+    body.light{--bg1:#f1f5f9; --bg2:#ffffffcc; --card:#ffffffdd; --text:#0b1222; --muted:#475569}
+    body.light header{background:#ffffffc8}
+    body.light table{background:#ffffff}
+    body.light thead th{background:#f8fafcee}
+
+    #search{ width: 25%;}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container topbar">
+      <div class="logo"><i class="ri-bar-chart-2-line"></i> Rankify</div>
+      <nav id="tabs">
+        <div class="tab active" data-tab="dashboard"><i class="ri-home-5-line"></i> Dashboard</div>
+        <div class="tab" data-tab="upload"><i class="ri-upload-cloud-2-line"></i> Upload</div>
+        <div class="tab" data-tab="lists"><i class="ri-table-2"></i> Merit Lists</div>
+        <div class="tab" data-tab="stats"><i class="ri-pie-chart-2-line"></i> Statistics</div>
+        <div class="tab" data-tab="compare"><i class="ri-user-voice-line"></i> Compare</div>
+        <div class="tab" data-tab="settings"><i class="ri-settings-3-line"></i> Settings</div>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Dashboard -->
+    <section id="dashboard" class="active">
+      <div class="grid g-3">
+        <div class="card">
+          <h3>Welcome 👋</h3>
+          <p class="sub">Upload your Excel file containing the required student data to instantly generate ranked merit lists with export options, insightful charts, and a clean, professional interface.</p>
+          <div class="toolbar" style="margin-top:12px">
+            <button class="btn" onclick="switchTab('upload')"><i class="ri-upload-cloud-2-line"></i> Upload Excel</button>
+            <!-- <button class="btn secondary" onclick="demoData()"><i class="ri-magic-line"></i> Load Demo Data</button> -->
+          </div>
+        </div>
+        <div class="card">
+          <h3>Quick Tips</h3>
+          <ul class="sub" style="text-align:left; line-height:1.7">
+            <li>Use Excel (.xls/.xlsx) with correct headers.</li>
+            <li>Include all required student details.</li>
+            <li>Format DOB as <b>DD-MM-YYYY</b> or Excel date.</b></li>
+            <!-- <li>Apply correct Domicile/Home University values for ranking.</li> -->
+            <li>Data Heading should be <b>Wrap</b> and in Consistense way.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Last Upload</h3>
+          <div id="lastUpload" class="sub">No file uploaded yet.</div>
+        </div>
+     
+      
+    </section>
+
+    <!-- Upload -->
+    <section id="upload">
+      <div class="card">
+        <div class="dropzone" id="dropzone">
+          <input type="file" id="fileInput" accept=".xlsx,.xls" hidden />
+          <div class="dz-icon"><i class="ri-folder-upload-line"></i></div>
+          <p class="dz-title">Drag & Drop your Excel here</p>
+          <p class="sub">or <span class="dz-cta" onclick="document.getElementById('fileInput').click()">browse</span> to choose a file</p>
+          <div class="progress" aria-hidden="true"><div class="bar" id="bar"></div></div>
+        </div>
+      </div>
+
+      <div class="grid g-3" style="margin-top:16px">
+        <div class="card"><h3>Total Students</h3><div id="kpiTotal" class="sub">—</div></div>
+        <div class="card"><h3>Home University</h3><div id="kpiHU" class="sub">—</div></div>
+        <div class="card"><h3>All India (OMS)</h3><div id="kpiOMS" class="sub">—</div></div>
+      </div>
+    </section>
+
+    <!-- Merit Lists -->
+    <section id="lists">
+      <div class="card">
+        <div class="toolbar">
+          <input id="search" class="input" placeholder="🔍 Search by Name or Application ID" />
+          <button class="btn" onclick="exportAll()"><i class="ri-download-2-line"></i> Export All (Excel)</button>
+        </div>
+        <div class="grid g-3">
+          <div class="card">
+            <div class="toolbar" style="justify-content:space-between">
+              <h3>🏆 State Level Merit List</h3>
+              <div>
+                <button class="btn secondary" onclick="exportTableExcel('stateTable','State_Merit_List')"><i class="ri-file-excel-2-line"></i> Excel</button>
+                <button class="btn secondary" onclick="exportTablePDF('stateTable','State_Merit_List')"><i class="ri-file-pdf-2-line"></i> PDF</button>
+              </div>
+            </div>
+            <div class="table-wrap" id="stateTable"></div>
+          </div>
+
+          <div class="card">
+            <div class="toolbar" style="justify-content:space-between">
+              <h3>🌍 All India Merit List</h3>
+              <div>
+                <button class="btn secondary" onclick="exportTableExcel('allIndiaTable','AllIndia_Merit_List')"><i class="ri-file-excel-2-line"></i> Excel</button>
+                <button class="btn secondary" onclick="exportTablePDF('allIndiaTable','AllIndia_Merit_List')"><i class="ri-file-pdf-2-line"></i> PDF</button>
+              </div>
+            </div>
+            <div class="table-wrap" id="allIndiaTable"></div>
+          </div>
+
+          <div class="card">
+            <div class="toolbar" style="justify-content:space-between">
+              <h3>🏠 Home University Merit List</h3>
+              <div>
+                <button class="btn secondary" onclick="exportTableExcel('homeUniTable','HomeUniversity_Merit_List')"><i class="ri-file-excel-2-line"></i> Excel</button>
+                <button class="btn secondary" onclick="exportTablePDF('homeUniTable','HomeUniversity_Merit_List')"><i class="ri-file-pdf-2-line"></i> PDF</button>
+              </div>
+            </div>
+            <div class="table-wrap" id="homeUniTable"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Statistics -->
+    <section id="stats">
+      <div class="grid g-3">
+        <div class="card"><h3>CET Score Distribution</h3><canvas id="chartCET" height="160"></canvas></div>
+        <div class="card"><h3>Gender Ratio</h3><canvas id="chartGender" height="160"></canvas></div>
+        <div class="card"><h3>Domicile (MH vs OMS)</h3><canvas id="chartDomicile" height="160"></canvas></div>
+      </div>
+    </section>
+
+    <!-- Compare -->
+    <section id="compare">
+      <div class="card">
+        <div class="toolbar">
+          <input id="cmpA" class="input" placeholder="Enter Application ID A" />
+          <input id="cmpB" class="input" placeholder="Enter Application ID B" />
+          <button class="btn" onclick="compareStudents()"><i class="ri-scales-3-line"></i> Compare</button>
+        </div>
+        <div style="height: 150px; width: 300px;"></div>
+        <div class="grid g-2" id="compareWrap"></div>
+        
+      </div>
+    </section>
+
+    <!-- Settings -->
+    <section id="settings">
+      <div class="card">
+        <h3>Preferences</h3>
+        <div class="toolbar">
+          <button class="btn" onclick="toggleTheme()"><i class="ri-contrast-drop-2-line"></i> Toggle Light / Dark</button>
+          <button class="btn secondary" onclick="clearSaved()"><i class="ri-database-2-line"></i> Clear Saved Data</button>
+        </div>
+        <p class="sub">Data is stored only in your browser (localStorage) for convenience.</p>
+      </div>
+      <div style="height: 80px; width: 300px;"></div>
+    </section>
+  </main>
+
+  <!-- Modal for Student Profile -->
+  <div class="modal" id="profileModal" onclick="closeModal(event)">
+    <div class="card content">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px">
+        <h3>Student Profile</h3>
+        <button class="btn secondary" onclick="hide('#profileModal')"><i class="ri-close-line"></i> Close</button>
+      </div>
+      <div id="profileBody" class="sub">Loading…</div>
+    </div>
+  </div>
+
+  <footer>
+  © <span id="year"></span> Merit List Generator — Accurate, Fast, and Reliable Student Rankings
+    <p>Design by Akshay Yeole</p>
+</footer>
+
+
+  <script>
+    const $ = (q)=>document.querySelector(q);
+    const $$ = (q)=>document.querySelectorAll(q);
+    const show = (q)=>$(q).classList.add('active');
+    const hide = (q)=>$(q).classList.remove('active');
+    const switchTab = (id)=>{ $$('#tabs .tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===id));
+      $$('main > section').forEach(s=>s.classList.toggle('active', s.id===id));
+      window.scrollTo({top:0,behavior:'smooth'});
+    }
+    $$('#tabs .tab').forEach(t=>t.addEventListener('click',()=>switchTab(t.dataset.tab)));
+    document.getElementById('year').textContent=new Date().getFullYear();
+
+    // State
+    let allStudents = []; // parsed raw
+    let ranked = { state: [], ai: [], hu: [] };
+
+    // Upload / Drag & Drop
+    const dz = document.getElementById('dropzone');
+    const bar = document.getElementById('bar');
+    const finput = document.getElementById('fileInput');
+
+    finput.addEventListener('change', (e)=> handleFile(e.target.files?.[0]));
+    ;['dragenter','dragover'].forEach(evt=>dz.addEventListener(evt, e=>{e.preventDefault(); dz.style.borderColor = '#22d3ee';}));
+    ;['dragleave','drop'].forEach(evt=>dz.addEventListener(evt, e=>{e.preventDefault(); dz.style.borderColor = '#7c3aed55';}));
+    dz.addEventListener('drop', e=>{
+      const file = e.dataTransfer.files?.[0];
+      if(file) handleFile(file);
+    });
+
+    function handleFile(file){
+      if(!file) return;
+      if(!/\.xlsx?$/.test(file.name)){ alert('Please upload an .xls or .xlsx file'); return; }
+      bar.style.width='10%';
+      const reader = new FileReader();
+      reader.onprogress = (ev)=>{
+        if(ev.lengthComputable){ const pct = Math.min(95, Math.round(ev.loaded/ev.total*100)); bar.style.width=pct+'%'; }
+      }
+      reader.onload = (ev)=>{
+        const data = new Uint8Array(ev.target.result);
+        const wb = XLSX.read(data, {type:'array'});
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        const json = XLSX.utils.sheet_to_json(sheet);
+        processData(json);
+        bar.style.width='100%'; setTimeout(()=>bar.style.width='0%', 600);
+        $('#lastUpload').innerHTML = `<b>${file.name}</b> • ${new Date().toLocaleString()}`;
+        localStorage.setItem('mlg:lastFileName', file.name);
+      }
+      reader.readAsArrayBuffer(file);
+    }
+
+    // Parsing & Ranking
+    function processData(rows){
+      allStudents = rows.map(r=>({
+        appId: r['Application ID'],
+        name: r['Student Name'],
+        gender: (r['Gender']||'').toString().trim(),
+        dobStr: normalizeDOB(r['Date of Birth (DOB)']), // YYYY-MM-DD
+        dob: parseDOB(r['Date of Birth (DOB)']),
+        cet: num(r['CET Score']),
+        ten_percentage: num(r['10th Percentage']),
+        ten_maths: num(r['10th Mathematics Marks']),
+        ten_science: num(r['10th Science Marks']),
+        ten_english: num(r['10th English Marks']),
+        twelve_percentage: num(r['12th Percentage']),
+        homeUniversity: boolYes(r['Home University']),
+        domicile: (r['Domicile']||'').toString().trim().toUpperCase()
+      })).filter(s=>s.appId!=null && s.name!=null);
+
+      // Make ranked lists
+      ranked.state = addRank(sortByRules([...allStudents]));
+      ranked.ai = addRank(sortByRules(allStudents.filter(s=>s.domicile==='OMS')));
+      ranked.hu = addRank(sortByRules(allStudents.filter(s=>s.homeUniversity)));
+
+      // KPIs
+      $('#kpiTotal').textContent = allStudents.length;
+      $('#kpiHU').textContent = allStudents.filter(s=>s.homeUniversity).length;
+      $('#kpiOMS').textContent = allStudents.filter(s=>s.domicile==='OMS').length;
+
+      // Render UI
+      renderAllTables();
+      buildCharts();
+
+      // Persist
+      localStorage.setItem('mlg:data', JSON.stringify(allStudents));
+      localStorage.setItem('mlg:ranked', JSON.stringify(ranked));
+
+      switchTab('lists');
+    }
+
+    function num(v){ const n = Number(v); return Number.isFinite(n) ? n : 0 }
+    function boolYes(v){ return (v+'' ).trim().toLowerCase()==='yes' }
+
+    function parseDOB(v){
+      // Accept Excel serial, or DD-MM-YYYY / DD/MM/YYYY / YYYY-MM-DD
+      if(typeof v==='number'){
+        const d = XLSX.SSF.parse_date_code(v);
+        return new Date(d.y, d.m-1, d.d);
+      }
+      if(typeof v==='string'){
+        const s = v.trim();
+        const m1 = s.match(/^(\d{2})[\/\-](\d{2})[\/\-](\d{2,4})$/); // DD-MM-YYYY
+        const m2 = s.match(/^(\d{4})-(\d{2})-(\d{2})$/); // YYYY-MM-DD
+        if(m1){
+          let [_, dd, mm, yy] = m1; if(yy.length===2) yy = '20'+yy; 
+          return new Date(+yy, +mm-1, +dd);
+        }
+        if(m2){ let [_, y, m, d] = m2; return new Date(+y, +m-1, +d); }
+      }
+      return new Date('1900-01-01');
+    }
+    function normalizeDOB(v){ const d = parseDOB(v); const y=d.getFullYear(); const m=(''+(d.getMonth()+1)).padStart(2,'0'); const day=(''+d.getDate()).padStart(2,'0'); return `${y}-${m}-${day}` }
+
+    function cmp(a,b){ return a<b?-1: a>b?1:0 }
+    function sortByRules(arr){
+      return arr.sort((a,b)=>{
+        // 1. CET desc
+        if(a.cet!==b.cet) return b.cet - a.cet;
+        // 2. DOB earlier higher
+        if(+a.dob!==+b.dob) return a.dob - b.dob;
+        // 3. 10th %
+        if(a.ten_percentage!==b.ten_percentage) return b.ten_percentage - a.ten_percentage;
+        // 4. 10th Maths
+        if(a.ten_maths!==b.ten_maths) return b.ten_maths - a.ten_maths;
+        // 5. 10th Science
+        if(a.ten_science!==b.ten_science) return b.ten_science - a.ten_science;
+        // 6. 10th English
+        if(a.ten_english!==b.ten_english) return b.ten_english - a.ten_english;
+        // 7. 12th %
+        return b.twelve_percentage - a.twelve_percentage;
+      });
+    }
+    function addRank(arr){ return arr.map((s,i)=>({ rank:i+1, ...s })) }
+
+    // Tables
+    function renderAllTables(){
+      renderTable(ranked.state, '#stateTable', 'State Rank');
+      renderTable(ranked.ai, '#allIndiaTable', 'All India Rank');
+      renderTable(ranked.hu, '#homeUniTable', 'Home University Rank');
+    }
+
+    function renderTable(data, sel, rankLabel){
+      const wrap = document.querySelector(sel);
+      if(!data?.length){ wrap.innerHTML = '<div class="sub">No data</div>'; return; }
+      let html = `<table><thead><tr>
+        <th data-key="rank">${rankLabel}</th>
+        <th data-key="appId">Application ID</th>
+        <th data-key="name">Name</th>
+        <th data-key="gender">Gender</th>
+        <th data-key="dobStr">DOB</th>
+        <th data-key="cet">CET</th>
+        <th data-key="ten_percentage">10%</th>
+        <th data-key="ten_maths">10 Math</th>
+        <th data-key="ten_science">10 Science</th>
+        <th data-key="ten_english">10 English</th>
+        <th data-key="twelve_percentage">12%</th>
+        <th data-key="homeUniversity">Home Univ.</th>
+        <th data-key="domicile">Domicile</th>
+      </tr></thead><tbody>`;
+      for(const s of data){
+        html += `<tr onclick="openProfile('${encodeURIComponent(s.appId)}')">
+          <td class="rank">${s.rank}</td>
+          <td>${s.appId??''}</td>
+          <td style="text-align:left">${escapeHtml(s.name??'')}</td>
+          <td>${s.gender??''}</td>
+          <td>${s.dobStr}</td>
+          <td>${s.cet}</td>
+          <td>${s.ten_percentage}</td>
+          <td>${s.ten_maths}</td>
+          <td>${s.ten_science}</td>
+          <td>${s.ten_english}</td>
+          <td>${s.twelve_percentage}</td>
+          <td>${s.homeUniversity?'<span class="pill yes">Yes</span>':'<span class="pill no">No</span>'}</td>
+          <td>${s.domicile==='MH'?'<span class="pill mh">MH</span>':'<span class="pill oms">OMS</span>'}</td>
+        </tr>`
+      }
+      html += `</tbody></table>`;
+      wrap.innerHTML = html;
+
+      // Sorting (client side visual)
+      wrap.querySelectorAll('th').forEach(th=>{
+        th.addEventListener('click', ()=>{
+          const key = th.dataset.key; if(!key) return;
+          const rows = Array.from(wrap.querySelectorAll('tbody tr'));
+          const idx = Array.from(th.parentNode.children).indexOf(th);
+          const asc = !(th.dataset.asc==='true'); th.dataset.asc = asc;
+          rows.sort((r1,r2)=>{
+            const t1 = r1.children[idx].innerText; const t2 = r2.children[idx].innerText;
+            const n1 = +t1; const n2 = +t2; const bothNum = !isNaN(n1) && !isNaN(n2);
+            return asc ? (bothNum? n1-n2 : t1.localeCompare(t2)) : (bothNum? n2-n1 : t2.localeCompare(t1));
+          });
+          const tbody = wrap.querySelector('tbody');
+          rows.forEach(r=>tbody.appendChild(r));
+        });
+      });
+
+      // Search
+      const search = $('#search');
+      search.oninput = ()=>{
+        const q = search.value.trim().toLowerCase();
+        
+        document.querySelectorAll('#stateTable tbody tr, #allIndiaTable tbody tr, #homeUniTable tbody tr').forEach(tr=>{
+          const t = tr.innerText.toLowerCase();
+          tr.style.display = t.includes(q)? '' : 'none';
+        });
+      }
+    }
+
+    // Profile Modal
+    function openProfile(appIdEnc){
+      const appId = decodeURIComponent(appIdEnc);
+      const s = allStudents.find(x=> (x.appId+'')=== (appId+'') );
+      if(!s) return;
+      const findRank = (list)=>{ const m = ranked[list].find(x=> (x.appId+'')===(s.appId+'') ); return m? m.rank : '—' }
+      const html = `
+        <div class="grid g-2">
+          <div>
+            <h3 style="margin:0 0 8px 0">${escapeHtml(s.name)} <span class="sub">• ${s.appId}</span></h3>
+            <p class="sub">Gender: <b>${s.gender||'—'}</b> • DOB: <b>${s.dobStr}</b></p>
+            <p class="sub">Domicile: <b>${s.domicile}</b> • Home Univ: <b>${s.homeUniversity? 'Yes':'No'}</b></p>
+          </div>
+          <div class="grid g-3">
+            <div class="card"><div class="sub">CET</div><h3>${s.cet}</h3></div>
+            <div class="card"><div class="sub">10% <h3>${s.ten_percentage}</h3> 12%<h3>${s.twelve_percentage}</h3></div></div>
+            <div class="card"><div class="sub">10th : <br> Math<h3>${s.ten_maths}</h3> Sci <h3>${s.ten_science}</h3> Eng <h3>${s.ten_english}</h3></div></div>
+          </div>
+        </div>
+        <div class="grid g-3" style="margin-top:10px">
+          <div class="card"><div class="sub">State Rank</div><h3>#${findRank('state')}</h3></div>
+          <div class="card"><div class="sub">All India Rank</div><h3>#${findRank('ai')}</h3></div>
+          <div class="card"><div class="sub">Home Univ Rank</div><h3>#${findRank('hu')}</h3></div>
+        </div>
+      `;
+      $('#profileBody').innerHTML = html;
+      show('#profileModal');
+    }
+    function closeModal(e){ if(e.target.id==='profileModal') hide('#profileModal') }
+
+    // Charts
+    let chCET, chGender, chDom;
+    function buildCharts(){
+      // Destroy existing
+      [chCET,chGender,chDom].forEach(ch=>{ try{ ch?.destroy() }catch{} });
+      const ctx1 = document.getElementById('chartCET');
+      const ctx2 = document.getElementById('chartGender');
+      const ctx3 = document.getElementById('chartDomicile');
+
+      const cet = allStudents.map(s=>s.cet).filter(n=>Number.isFinite(n));
+      const bins = makeBins(cet, 10); // 10 bins
+      chCET = new Chart(ctx1, { type:'bar', data:{ labels: bins.labels, datasets:[{ label:'Students', data: bins.counts }] }, options:{ responsive:true, plugins:{ legend:{display:false} } } });
+
+      const gCounts = countBy(allStudents, s=> (s.gender||'Other').toString());
+      chGender = new Chart(ctx2, { type:'pie', data:{ labels:Object.keys(gCounts), datasets:[{ data:Object.values(gCounts) }] }, options:{ plugins:{ legend:{position:'bottom'} } } });
+
+      const dCounts = countBy(allStudents, s=> s.domicile==='MH'?'MH':'OMS');
+      chDom = new Chart(ctx3, { type:'doughnut', data:{ labels:Object.keys(dCounts), datasets:[{ data:Object.values(dCounts) }] }, options:{ plugins:{ legend:{position:'bottom'} } } });
+    }
+    function countBy(arr, fn){ const m={}; for(const x of arr){ const k=fn(x); m[k]=(m[k]||0)+1 } return m }
+    function makeBins(values, bins){
+      if(!values.length) return {labels:[], counts:[]};
+      const min = Math.min(...values), max = Math.max(...values);
+      const step = Math.max(1, Math.ceil((max-min)/bins));
+      const labels=[], counts=new Array(bins).fill(0);
+      for(let i=0;i<bins;i++){ const a=min+i*step, b=a+step-1; labels.push(`${a}-${b}`) }
+      for(const v of values){ const idx=Math.min(bins-1, Math.floor((v-min)/step)); counts[idx]++ }
+      return {labels, counts};
+    }
+
+    // Export
+    function exportTableExcel(containerId, filename){
+      const table = document.querySelector('#'+containerId+' table');
+      if(!table){ alert('No table to export'); return }
+      const wb = XLSX.utils.table_to_book(table);
+      XLSX.writeFile(wb, filename + '.xlsx');
+    }
+    function exportTablePDF(containerId, filename){
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({orientation:'landscape'});
+      doc.text(filename, 14, 12);
+      const table = document.querySelector('#'+containerId+' table');
+      if(!table){ alert('No table'); return }
+      const headers = Array.from(table.tHead.rows[0].cells).map(th=>th.innerText);
+      const rows = Array.from(table.tBodies[0].rows).map(tr=>Array.from(tr.cells).map(td=>td.innerText));
+      doc.autoTable({ head:[headers], body:rows, startY:18, styles:{ fontSize:8 } });
+      doc.save(filename+'.pdf');
+    }
+    function exportAll(){
+      const wb = XLSX.utils.book_new();
+      const add = (arr, name)=>{
+        const rows = arr.map(s=>({
+          Rank:s.rank, 'Application ID':s.appId, 'Student Name':s.name, Gender:s.gender, DOB:s.dobStr, 'CET Score':s.cet,
+          '10th Percentage':s.ten_percentage, '10th Mathematics Marks':s.ten_maths, '10th Science Marks':s.ten_science,
+          '10th English Marks':s.ten_english, '12th Percentage':s.twelve_percentage, 'Home University': s.homeUniversity?'Yes':'No', Domicile:s.domicile
+        }));
+        const ws = XLSX.utils.json_to_sheet(rows);
+        XLSX.utils.book_append_sheet(wb, ws, name);
+      }
+      add(ranked.state, 'State'); add(ranked.ai, 'All_India'); add(ranked.hu, 'Home_University');
+      XLSX.writeFile(wb, 'Merit_Lists.xlsx');
+    }
+
+    // Compare
+    function compareStudents(){
+      const A = $('#cmpA').value.trim();
+      const B = $('#cmpB').value.trim();
+      const a = allStudents.find(s=> (s.appId+'')===A );
+      const b = allStudents.find(s=> (s.appId+'')===B );
+      const wrap = $('#compareWrap');
+      if(!a || !b){ wrap.innerHTML = '<div class="sub">Enter valid Application IDs present in the uploaded data.</div>'; return }
+      const crd = (s)=>`
+        <div class="card">
+          <h3>${escapeHtml(s.name)} <span class="sub">• ${s.appId}</span></h3>
+          <p class="sub">Gender: <b>${s.gender}</b> • DOB: <b>${s.dobStr}</b></p>
+          <p class="sub">Domicile: <b>${s.domicile}</b> • Home Univ: <b>${s.homeUniversity?'Yes':'No'}</b></p>
+          <div class="grid g-3" style="margin-top:8px">
+            <div class="card"><div class="sub">CET</div><h3>${s.cet}</h3></div>
+            <div class="card"><div class="sub">10% / 12%</div><h3>${s.ten_percentage} / ${s.twelve_percentage}</h3></div>
+            <div class="card"><div class="sub">10th M / S / E</div><h3>${s.ten_maths} / ${s.ten_science} / ${s.ten_english}</h3></div>
+          </div>
+        </div>`;
+      const rankFor=(s,list)=>{const m=ranked[list].find(x=>x.appId+''===s.appId+''); return m?('#'+m.rank):'—'}
+      wrap.innerHTML = crd(a)+crd(b)+
+        `<div class="card" style="grid-column:1/-1">
+           <h3>Ranks</h3>
+           <div class="grid g-3" style="margin-top:8px">
+             <div class="card"><div class="sub">State</div><h3>${rankFor(a,'state')} vs ${rankFor(b,'state')}</h3></div>
+             <div class="card"><div class="sub">All India</div><h3>${rankFor(a,'ai')} vs ${rankFor(b,'ai')}</h3></div>
+             <div class="card"><div class="sub">Home Univ</div><h3>${rankFor(a,'hu')} vs ${rankFor(b,'hu')}</h3></div>
+           </div>
+         </div>`;
+      switchTab('compare');
+    }
+
+    // Theme
+    function toggleTheme(){ document.body.classList.toggle('light'); localStorage.setItem('mlg:theme', document.body.classList.contains('light')?'light':'dark'); }
+    function clearSaved(){ 
+            // Clear the data arrays
+      allStudents = [];
+      ranked = { state: [], ai: [], hu: [] };
+      
+      // Reset UI elements
+      $('#kpiTotal').textContent = '—';
+      $('#kpiHU').textContent = '—';
+      $('#kpiOMS').textContent = '—';
+      $('#lastUpload').textContent = 'No file uploaded yet.';
+      
+      // Clear tables
+      $('#stateTable').innerHTML = '<div class="sub">No data</div>';
+      $('#allIndiaTable').innerHTML = '<div class="sub">No data</div>';
+      $('#homeUniTable').innerHTML = '<div class="sub">No data</div>';
+      
+      // Clear search input
+      $('#search').value = '';
+      
+      // Reset charts
+      [chCET, chGender, chDom].forEach(ch => { 
+        try { ch?.destroy(); } catch {} 
+      });
+      
+      // Rebuild empty charts
+      buildCharts();
+      
+      // Show a confirmation message
+      alert('Saved data has been cleared.');
+    }
+    // Security helpers
+    function escapeHtml(s){ return (s||'').toString().replace(/[&<>"']/g, m=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])) }
+
+    // Load from localStorage on start
+    (function init(){
+      const theme = localStorage.getItem('mlg:theme'); if(theme==='light') document.body.classList.add('light');
+      const saved = localStorage.getItem('mlg:data');
+      if(saved){ allStudents = JSON.parse(saved); ranked = JSON.parse(localStorage.getItem('mlg:ranked')||'{}'); renderAllTables(); buildCharts(); $('#kpiTotal').textContent=allStudents.length; $('#kpiHU').textContent=allStudents.filter(s=>s.homeUniversity).length; $('#kpiOMS').textContent=allStudents.filter(s=>s.domicile==='OMS').length; $('#lastUpload').innerHTML = `<b>${localStorage.getItem('mlg:lastFileName')||'Saved Data'}</b> • (restored)`; }
+    })();
+
+  </script>
+</body>
+</html>
